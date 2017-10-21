@@ -1,0 +1,92 @@
+----------------------------------------------------------------------------
+
+> sa <- read.csv("D:/sales.csv", header=T)
+> sa
+   Sales
+1      5
+2      8
+3     10
+4     18
+5     26
+6     35
+7     28
+8     20
+9     14
+10     8
+11     6
+12    26
+13    21
+14    20
+15    29
+16    32
+17    44
+18    58
+19    46
+20    32
+21    27
+22    13
+23    11
+24    52
+> acf(sa)
+> pacf (sa)
+
+---- Below command are to figure out best ARIMA model
+
+> arima(sa,order= c(1,1,1))
+
+> arima(sa,order= c(2,1,2))
+
+> arima(sa,order= c(1,1,0))
+
+> arima(sa,order= c(0,1,1))
+
+
+--- For checking Seasonal ARIMA
+
+arima(sa,seasonal = list(order = c(1,1,1), period = NA))
+
+arima(sa,seasonal = list(order = c(2,1,2), period = NA))
+
+arima(sa,seasonal = list(order = c(2,2,2), period = NA))
+
+arima(sa,seasonal = list(order = c(2,2,2), period = NA))
+
+arima(sa,seasonal = list(order = c(1,2,1), period = NA))
+
+arima(sa,seasonal = list(order = c(2,0,2), period = NA))
+
+arima(sa,seasonal = list(order = c(1,0,1), period = NA))
+
+
+---Based on value of AIC Seasonal ARIMA (1,2,1) is better than all other models hence Final ARIMA model is
+
+arima(sa, order = c(1, 1, 1), seasonal = list(order = c(1, 2, 1), period = 4))
+
+----The value of period can be select based on seasonality behavior present in data. In our case best results are coming for period -4. Command For The  Box-Jenkins model building- Model Validation
+
+
+
+> fit<-arima(sa, order = c(1, 1, 1), seasonal = list(order = c(1, 2, 1), period = 4))
+> tsdiag(fit)
+
+-- Command for Model Validation – Box Test
+
+> Box.test(fit$residuals,lag=5)
+
+
+-- Model Forecasting command
+
+> predict(fit,n.ahead=8)
+
+
+
+
+
+
+
+
+
+
+
+
+
