@@ -1,0 +1,10 @@
+1)Use R version 3.1.2 and above
+
+
+2)Change working directory as per your system path
+
+
+3)Install packages 
+car
+plyr
+sqldf

@@ -1,0 +1,16 @@
+bethel	bethel
+buildStrataDF	buildStrataDF
+checkInput	checkInput
+errors	errors
+evalSolution	evalSolution
+optimizeStrata	optimizeStrata
+selectSample	selectSample
+strata	strata
+swisserrors	swisserrors
+swissframe	swissframe
+swissmunicipalities	swissmunicipalities
+swissstrata	swissstrata
+tuneParameters	tuneParameters
+updateFrame	updateFrame
+updateStrata	updateStrata
+var.bin	var.bin

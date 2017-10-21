@@ -1,0 +1,41 @@
+bethel                  Multivariate optimal allocation
+buildStrataDF           Builds the "strata" dataframe containing
+                        information on target variables Y's
+                        distributions in the different strata, starting
+                        from sample data or from a frame
+checkInput              Checks the inputs to the package: dataframes
+                        "errors", "strata" and "sampling frame"
+errors                  Precision constraints (maximum CVs) as input
+                        for Bethel allocation
+evalSolution            Allows to evaluate the solution produced by the
+                        function 'optimizeStrata' by selecting a number
+                        of samples from the frame with the optimal
+                        stratification, and calculating average CV's on
+                        the target variables Y's together with
+                        differences between estimates and the values of
+                        the parameters in the population.
+optimizeStrata          Best stratification of a sampling frame for
+                        multipurpose surveys
+selectSample            Selection of a stratified sample from the frame
+                        with srswor method
+strata                  Dataframe containing information on strata in
+                        the frame
+swisserrors             Precision constraints (maximum CVs) as input
+                        for Bethel allocation
+swissframe              Dataframe containing information on all units
+                        in the population of reference that can be
+                        considered as the final sampling unit (this
+                        example is related to Swiss municipalities)
+swissmunicipalities     The Swiss municipalities population
+swissstrata             Dataframe containing information on strata in
+                        the swiss municipalities frame
+tuneParameters          Execution and compared evaluation of
+                        optimization runs
+updateFrame             Updates the initial frame on the basis of the
+                        optimized stratification
+updateStrata            Assigns new labels to atomic strata on the
+                        basis of the optimized aggregated strata
+var.bin                 Allows to transform a continuous variable into
+                        a categorical ordinal one by applying a
+                        modified version of the k-means clustering
+                        function in the 'stats' package.

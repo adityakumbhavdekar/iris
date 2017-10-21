@@ -1,0 +1,248 @@
+###
+setwd("C:/Users/babycorn/Documents/Edupristine/Xsell Case tutor")
+
+### import required packages
+library(car)
+library(glmnet)
+library(SamplingStrata)
+library(sampling)
+library(ROCR)
+
+
+###Read the data 
+cust_data<-read.csv("cust_data.csv")
+summ_cust_data.csv<-summary(cust_data)
+write.csv(summ_cust_data.csv, "summ_cust_data.csv.csv")
+
+
+### See the data summary (verify Data)
+head(cust_data)
+tail(cust_data)
+summary(cust_data)
+
+### Preparing Contigency table for categorical variables
+### Frequency of Male-Female Responder wise (0/1)
+
+table(cust_data$Gender,cust_data$Responder)
+#  0    1 
+# 2746  305 
+#          0    1
+# Female  747  205
+# Male   1999  100
+
+### See the list of available columns in the dataset
+colnames(cust_data)
+### Column Names
+# [1] "master_id"        "Responder"        "Age"              "Channel"          "FS_code"         
+# [6] "Marital_status"   "Gender"           "Prosperity_Index" "WSI"              "IncomeGrp"       
+# [11] "No_of_prod1"     "MSL_prod1"        "MR_prod"         "LifeStage"        "No_of_prod2"     
+# [16] "MSL_prod2"       "num_of_cars"      "Family_doctor"   
+
+
+###Multicollinearity check
+
+###Get the list of numerical columns in dat1
+
+dat1<- cust_data[,c(3,9,10,11,15,17)]
+
+###Prepare the correlation matrix for columns in dat1
+correlation <- cor(dat1,dat1)
+
+### See the correlation matrix
+correlation
+
+###Prepare the Variance inflation factor table for columns in dat1
+vif1 <- vif(lm(Responder ~ Age + WSI + IncomeGrp + No.of.prod1 + MSL_prod1 + No.of.prod2+MSL_prod2 +
+                 num_of_cars + Family_doctor , data=cust_data))
+
+read(vif1)
+### VIF values
+# Age           WSI     IncomeGrp   No_of_prod1     MSL_prod1   No_of_prod2     MSL_prod2   num_of_cars 
+# 1.003109      1.001896      1.003010      1.001883      1.002721      1.004788      1.001417      1.001903 
+# Family_doctor 
+# 1.001487 
+# WSI  IncomeGrp  No_of_prod1  MSL_prod1  No_of_prod2  MSL_prod2  num_of_cars  Family_doctor
+
+
+
+##Missing value and capping treatment along with categorization      			  
+cust_data$GRP_age <- ifelse( cust_data$Age=="",1 ,ifelse(cust_data$Age>50,3,ifelse(cust_data$Age>25,2,1)))
+cust_data$GRP_channel<-ifelse(cust_data$Channel=="Direct",1,ifelse(cust_data$Channel=="Broker",2,1))
+cust_data$GRP_gender<-ifelse(cust_data$Gender=="Male",1,ifelse(cust_data$Gender=="Female",2,1))
+cust_data$GRP_marital_status<-ifelse(cust_data$Marital_status=="Yes",1,ifelse(cust_data$Marital_status=="No",2,1))
+
+cust_data$GRP_FS_code<-ifelse(cust_data$FS_code=="A",1,ifelse(cust_data$FS_code=="E",3,2))
+
+cust_data$GRP_Prosperity_Index<-ifelse(cust_data$Prosperity_Index=="High",1,ifelse(cust_data$Prosperity_Index=="Medium",2,2))
+
+cust_data$GRP_No.of.prod1<-ifelse(cust_data$No.of.prod1>5,1,ifelse(cust_data$No.of.prod1<=5,2,2))
+
+cust_data$GRP_No.of.prod2<-ifelse(cust_data$No.of.prod2>5,1,ifelse(cust_data$No.of.prod2 >2,2,1))
+
+cust_data$GRP_MSL_prod1<-ifelse(cust_data$MSL_prod1>24,1,ifelse(cust_data$MSL_prod1 >12 ,2,1))
+
+
+### sorting the data and generating the sample data
+cust_data <- cust_data[order(cust_data$Responder,decreasing = TRUE),]
+samp =strata(cust_data,c("Responder"),size=c(213,1922), method="srswor")
+samp<-getdata(cust_data,samp)
+
+### Run the logistic regression to generate the coefficients and try to compare results
+
+logistic1<- glm(formula = Responder ~ GRP_age+ GRP_channel+ GRP_gender+ GRP_marital_status+ GRP_FS_code+ 
+                  GRP_Prosperity_Index+ No.of.prod1+ No.of.prod2+ MSL_prod1 ,
+                family = binomial("logit"), data=samp)
+
+logistic1<- glm(formula = Responder ~ GRP_age+ GRP_channel+ GRP_gender+ GRP_marital_status+
+                  GRP_Prosperity_Index+ No.of.prod1+ No.of.prod2+ MSL_prod1 ,
+                family = binomial("logit"), data=samp)
+
+### See the outputs
+logistic1
+
+# Display results summary
+summary(logistic1) 
+
+# Get the predicted values
+predict(logistic1, type="response") 
+
+#Save the predicted values to the work folder
+write.csv(predict,"predict.csv",row.names=F)
+
+# See the predicted values as vector
+as.vector(predict(logistic1, type="response"))
+
+
+### Validation Results
+
+
+############Hosmer lemeshow goodness of fit test#####################
+### Function code for H&L test
+
+hosmerlem <- function (y, yhat, g = 10) 
+  
+{
+  
+  cutyhat <- cut(yhat, breaks = quantile(yhat, probs = seq(0,1, 1/g)), include.lowest = T)
+  
+  obs <- xtabs(cbind(1 - y, y) ~ cutyhat)
+  
+  expect <- xtabs(cbind(1 - yhat, yhat) ~ cutyhat)
+  
+  chisq <- sum((obs - expect)^2/expect)
+  
+  P <- 1 - pchisq(chisq, g - 2)
+  
+  c("X^2" = chisq, Df = g - 2, "P(>Chi)" = P)
+  
+}
+
+
+R_hat<-as.vector(fitted(logistic1))
+yhat<-R_hat
+y<-samp$Responder
+master_id_Y_Yhat<-data.frame(cbind(R_hat,samp))
+colnames(master_id_Y_Yhat)<-c("Responder_hat",colnames(samp))
+write.csv(master_id_Y_Yhat,"Cust_data_Prob.csv",row.names=F)
+
+### Call the function for H&L test
+
+hosmerlem(samp$Responder, R_hat)
+
+######################Plot Gains chart#############################
+
+#### Preparing Gains/Lift chart
+library(ROCR)
+gain.chart <- function(y_hat,y) {
+plot(performance(prediction(y_hat,y), "tpr", "rpp"),lwd = 7, main = "Lift Chart")
+lines(ecdf((rank(-y_hat)[y == T]) / length(y)),verticals = T, do.points = F, col = "red", lwd = 3)
+}
+
+gain.chart(R_hat,samp$Responder)
+
+################Concordance C value and Gini Coefficient###################
+
+### Test for concordance -C value and Gini Coefficient
+# Assuming the input is a stored binomial GLM object
+
+outcome_and_fitted_col<-data.frame(samp$Responder, R_hat)
+colnames(outcome_and_fitted_col)<-c("Responder","fitted.values")
+Concordance = function(outcome_and_fitted_col)
+  
+{
+  
+  #outcome_and_fitted_col = cbind(logistic1$Responder, logistic1$fitted.values)
+  # get a subset of outcomes where the event actually happened
+  
+  ones = outcome_and_fitted_col[outcome_and_fitted_col[,1] == 1,]
+  
+  # get a subset of outcomes where the event didn't actually happen
+  
+  zeros = outcome_and_fitted_col[outcome_and_fitted_col[,1] == 0,]
+  
+  # Equate the length of the event and non-event tables
+  
+  if (length(ones[,1])>length(zeros[,1])) {ones = ones[1:length(zeros[,1]),]}
+  
+  else {zeros = zeros[1:length(ones[,1]),]}
+  
+  # Following will be c(ones_outcome, ones_fitted, zeros_outcome, zeros_fitted)
+  
+  ones_and_zeros = data.frame(ones, zeros)
+  
+  # initiate columns to store concordant, discordant, and tie pair evaluations
+  
+  conc = rep(NA, length(ones_and_zeros[,1]))
+  disc = rep(NA, length(ones_and_zeros[,1]))
+  ties = rep(NA, length(ones_and_zeros[,1]))
+  
+  for (i in 1:length(ones_and_zeros[,1])) {
+    
+    # This tests for concordance
+    
+    if (ones_and_zeros[i,2] > ones_and_zeros[i,4])
+      
+    {conc[i] = 1
+     disc[i] = 0
+     ties[i] = 0}
+    
+    # This tests for a tie
+    
+    else if (ones_and_zeros[i,2] == ones_and_zeros[i,4])
+      
+    {
+      
+      conc[i] = 0
+      disc[i] = 0
+      ties[i] = 1
+      
+    }
+    
+    # This should catch discordant pairs.
+    
+    else if (ones_and_zeros[i,2] < ones_and_zeros[i,4])
+      
+    {
+      
+      conc[i] = 0
+      disc[i] = 1
+      ties[i] = 0
+      
+    }
+    
+  }
+  
+  # Here we save the various rates
+  
+  conc_rate = mean(conc, na.rm=TRUE)
+  disc_rate = mean(disc, na.rm=TRUE)
+  tie_rate = mean(ties, na.rm=TRUE)
+  
+  return(list(concordance=conc_rate, num_concordant=sum(conc), discordance=disc_rate, num_discordant=sum(disc), tie_rate=tie_rate,num_tied=sum(ties)))
+  
+}
+
+Concordance_test<-Concordance(outcome_and_fitted_col)
+
+###View Results
+Concordance_test

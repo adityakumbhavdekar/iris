@@ -1,0 +1,365 @@
+---
+title: "**Air Traffic Control For Emails**"
+subtitle: "by **Ishan Gupta**"
+author: ""
+date: ""
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    smooth_scroll: true
+    collapsed: false
+    theme: default
+    highlight: pygments
+    fig_width: 10
+    fig_height: 4
+    fig_caption: true
+
+---
+
+***
+
+The objective of this exercise to develop a scoring algotithm, using email metrics that will govern when customers receive an email and what they receive. Email Score (ES) is initially defined by open rate, click rate and unsubscribe rate but can be extended to include other metrics in future. Campaigns will be ranked according to ES.
+
+# Setting the working Directory
+
+```{r Setting the working Directory,results='hide',message=FALSE,warning=FALSE}
+setwd("D:/Edupristine/1. ATC")
+```
+
+# Reading Email Report
+
+The Email Report has one year (Week 1 - Week 52) history of all the campaigns that were deployed by the company. The report includes each campaign's performance details - open rate, click rate, unique click rate, unsubscribe rate 3,372 records with the following columns:
+
+* Week - The week in which the email was deployed
+* Business - The business (Clothing, Grocery and Homeware) for which the email was done
+* Message - The unique identifier for each campaign
+* Email Type - The purpose of the email i.e. some of the campaigns are done by the company to inform the customers about something like closing/opening of store, offers etc. where as the others are done for trade
+* Delivered - The number of customers who received the email
+* Opened - The number of customers who opened the email
+* Clicked - The number of customers who clicked on any section in the email 
+* Unsubscribed - The number of customers who clicked on the unsubscribe link in the email
+
+
+```{r Reading Files,message=FALSE,warning=FALSE}
+
+train <- read.csv('Email_Report.csv',stringsAsFactors = F,header = T)
+head(train)
+
+```
+
+# Exploring Data
+
+* Check for the correctness of the file
+* Check if we have all the required columns and if they are in the correct format
+
+##Data Cleaning
+
+Check if there are any discrepancies in the data. 
+For Example: For every email, the number of customers who opened, clicked or unsubscribed should always be less than the customers who received the email. Let's check if that is true.
+
+```{r Data Cleaning,message=FALSE,warning=FALSE}
+
+# Number of campaigns for which opened > delivered
+nrow(subset(train, Opened>Delivered))
+
+# Number of campaigns for which clicked > opened
+nrow(subset(train, Clicked>Opened))
+
+# Number of campaigns for which unsubscribed > opened, clicked
+nrow(subset(train, Unsubscribed>Opened))
+nrow(subset(train, Unsubscribed>Clicked))
+
+# Remove the data issues
+train <- subset(train,Opened<Delivered)
+train <- subset(train,Clicked<Opened)
+train <- subset(train,Unsubscribed<Opened)
+train <- subset(train,Unsubscribed<Clicked)
+
+```
+
+##Data Transformation
+
+* Business and Email Type should be factors as they are categorical variables
+* We need to add email engagement metrics like open rate, click rate and unsubscribe rate in the file
+
+```{r Data Transformation,message=FALSE,warning=FALSE}
+
+# Checking Data Types
+str(train)
+
+# Convert Business and Email_Type into factors
+train$Business <- factor(train$Business)
+train$Email_Type <- factor(train$Email_Type)
+
+# Adding email engagement metrics
+train$Open_Rate <- train$Opened/train$Delivered
+train$Click_Rate <- train$Clicked/train$Delivered
+train$Unsub_Rate <- train$Unsubscribed/train$Delivered
+
+# Checking Data Types Again
+str(train)
+
+```
+
+# Model Building
+
+* The first step will be to divide the campaigns into 4 different groups based on their open, click and unsubscribe rate
+* We will not take click rate into consideration for Inform type of campaigns as the agenda was to just make the customer open that email and not click 
+* Email Score will be calculated at a business and email type level
+* Finally, we will normailize the email score so as to decide the priority of the campaigns on a given day
+
+```{r Model Building,message=FALSE,warning=FALSE}
+
+# % of email campaigns that fall in inform and trade category for each business
+prop.table(table(train$Business, train$Email_Type),1)*100
+
+```
+
+##Open Score
+
+The campaigns will be divided into 4 groups based on their open rates
+
+```{r Open Score,message=FALSE,warning=FALSE}
+
+# Check the distribution of open rate at a business and email type level
+aggregate(Open_Rate ~ Business + Email_Type, data = train, FUN = summary)
+
+# Default Value
+train$Open_Score <- 0
+
+# Clothing and Inform
+train$Open_Score <- ifelse(train$Business=="Clothing" & train$Email_Type=="Inform" & train$Open_Rate>0.35990 &
+                             train$Open_Rate<0.65690,1, train$Open_Score)
+train$Open_Score <- ifelse(train$Business=="Clothing" & train$Email_Type=="Inform" & train$Open_Rate>0.65690 &
+                             train$Open_Rate<0.73350,2, train$Open_Score)
+train$Open_Score <- ifelse(train$Business=="Clothing" & train$Email_Type=="Inform" & train$Open_Rate>0.73350 &
+                             train$Open_Rate<0.78680,3, train$Open_Score)
+train$Open_Score <- ifelse(train$Business=="Clothing" & train$Email_Type=="Inform" &
+                             train$Open_Rate>0.78680,4,train$Open_Score)
+
+
+# Grocery and Inform
+train$Open_Score <- ifelse(train$Business=="Grocery" & train$Email_Type=="Inform" & train$Open_Rate>0.18130 &
+                             train$Open_Rate<0.46180,1, train$Open_Score)
+train$Open_Score <- ifelse(train$Business=="Grocery" & train$Email_Type=="Inform" & train$Open_Rate>0.46180 &
+                             train$Open_Rate<0.50610,2, train$Open_Score)
+train$Open_Score <- ifelse(train$Business=="Grocery" & train$Email_Type=="Inform" & train$Open_Rate>0.50610 &
+                             train$Open_Rate<0.56810,3, train$Open_Score)
+train$Open_Score <- ifelse(train$Business=="Grocery" & train$Email_Type=="Inform" &
+                             train$Open_Rate>0.56810,4,train$Open_Score)
+
+
+# Homeware and Inform
+train$Open_Score <- ifelse(train$Business=="Homeware" & train$Email_Type=="Inform" & train$Open_Rate>0.03615 &
+                             train$Open_Rate<0.25110,1, train$Open_Score)
+train$Open_Score <- ifelse(train$Business=="Homeware" & train$Email_Type=="Inform" & train$Open_Rate>0.25110 &
+                             train$Open_Rate<0.30840,2, train$Open_Score)
+train$Open_Score <- ifelse(train$Business=="Homeware" & train$Email_Type=="Inform" & train$Open_Rate>0.30840 &
+                             train$Open_Rate<0.45920,3, train$Open_Score)
+train$Open_Score <- ifelse(train$Business=="Homeware" & train$Email_Type=="Inform" &
+                             train$Open_Rate>0.45920,4,train$Open_Score)
+
+
+# Clothing and Trade
+train$Open_Score <- ifelse(train$Business=="Clothing" & train$Email_Type=="Trade" & train$Open_Rate>0.02925 &
+                             train$Open_Rate<0.32400,1, train$Open_Score)
+train$Open_Score <- ifelse(train$Business=="Clothing" & train$Email_Type=="Trade" & train$Open_Rate>0.32400 &
+                             train$Open_Rate<0.39530,2, train$Open_Score)
+train$Open_Score <- ifelse(train$Business=="Clothing" & train$Email_Type=="Trade" & train$Open_Rate>0.39530 &
+                             train$Open_Rate<0.52240,3, train$Open_Score)
+train$Open_Score <- ifelse(train$Business=="Clothing" & train$Email_Type=="Trade" &
+                             train$Open_Rate>0.52240,4,train$Open_Score)
+
+
+# Grocery and Trade
+train$Open_Score <- ifelse(train$Business=="Grocery" & train$Email_Type=="Trade" & train$Open_Rate>0.08321 &
+                             train$Open_Rate<0.29030,1, train$Open_Score)
+train$Open_Score <- ifelse(train$Business=="Grocery" & train$Email_Type=="Trade" & train$Open_Rate>0.29030 &
+                             train$Open_Rate<0.34690,2, train$Open_Score)
+train$Open_Score <- ifelse(train$Business=="Grocery" & train$Email_Type=="Trade" & train$Open_Rate>0.34690 &
+                             train$Open_Rate<0.40290,3, train$Open_Score)
+train$Open_Score <- ifelse(train$Business=="Grocery" & train$Email_Type=="Trade" &
+                             train$Open_Rate>0.40290,4,train$Open_Score)
+
+
+# Homeware and Trade
+train$Open_Score <- ifelse(train$Business=="Homeware" & train$Email_Type=="Trade" & train$Open_Rate>0.05140 &
+                           train$Open_Rate<0.36430,1, train$Open_Score)
+train$Open_Score <- ifelse(train$Business=="Homeware" & train$Email_Type=="Trade" & train$Open_Rate>0.36430 &
+                             train$Open_Rate<0.43520,2, train$Open_Score)
+train$Open_Score <- ifelse(train$Business=="Homeware" & train$Email_Type=="Trade" & train$Open_Rate>0.43520 &
+                             train$Open_Rate<0.48150,3, train$Open_Score)
+train$Open_Score <- ifelse(train$Business=="Homeware" & train$Email_Type=="Trade" &
+                             train$Open_Rate>0.48150,4,train$Open_Score)
+
+```
+
+##Click Score
+
+The campaigns will be divided into 4 groups based on their click rates. However, we will ignore the Inform type campaigns as we don't want the customers to click on such campaigns
+
+```{r Click Score,message=FALSE,warning=FALSE}
+
+# Check the distribution of click rate at a business and email type level
+aggregate(Click_Rate ~ Business + Email_Type, data = train, FUN = summary)
+
+# Default Value
+train$Click_Score <- 0
+
+# Clothing and Trade
+train$Click_Score <- ifelse(train$Business=="Clothing" & train$Email_Type=="Trade" & train$Click_Rate>0.004852 &
+                             train$Click_Rate<0.039300,1, train$Click_Score)
+train$Click_Score <- ifelse(train$Business=="Clothing" & train$Email_Type=="Trade" & train$Click_Rate>0.039300 &
+                             train$Click_Rate<0.063070,2, train$Click_Score)
+train$Click_Score <- ifelse(train$Business=="Clothing" & train$Email_Type=="Trade" & train$Click_Rate>0.063070 &
+                             train$Click_Rate<0.119000,3, train$Click_Score)
+train$Click_Score <- ifelse(train$Business=="Clothing" & train$Email_Type=="Trade" &
+                             train$Click_Rate>0.119000,4,train$Click_Score)
+
+
+# Grocery and Trade
+train$Click_Score <- ifelse(train$Business=="Grocery" & train$Email_Type=="Trade" & train$Click_Rate>0.001821 &
+                             train$Click_Rate<0.020250,1, train$Click_Score)
+train$Click_Score <- ifelse(train$Business=="Grocery" & train$Email_Type=="Trade" & train$Click_Rate>0.020250 &
+                             train$Click_Rate<0.034850,2, train$Click_Score)
+train$Click_Score <- ifelse(train$Business=="Grocery" & train$Email_Type=="Trade" & train$Click_Rate>0.034850 &
+                             train$Click_Rate<0.061230,3, train$Click_Score)
+train$Click_Score <- ifelse(train$Business=="Grocery" & train$Email_Type=="Trade" &
+                             train$Click_Rate>0.061230,4,train$Click_Score)
+
+
+# Homeware and Trade
+train$Click_Score <- ifelse(train$Business=="Homeware" & train$Email_Type=="Trade" & train$Click_Rate>0.001707 &
+                           train$Click_Rate<0.076990,1, train$Click_Score)
+train$Click_Score <- ifelse(train$Business=="Homeware" & train$Email_Type=="Trade" & train$Click_Rate>0.076990 &
+                             train$Click_Rate<0.107900,2, train$Click_Score)
+train$Click_Score <- ifelse(train$Business=="Homeware" & train$Email_Type=="Trade" & train$Click_Rate>0.107900 &
+                             train$Click_Rate<0.144100,3, train$Click_Score)
+train$Click_Score <- ifelse(train$Business=="Homeware" & train$Email_Type=="Trade" &
+                             train$Click_Rate>0.144100,4,train$Click_Score)
+
+```
+
+##Unsubscribe Score
+
+Ideally, we would want our unsubscribe rate to be less therefore the campaigns with high unsubscribe rate will be penalized by assigning a high negative score. Also, in this case we will not calculate it at a business or an email type because our aim is to keep our customers engaged in every communication and not to lose them by sending irrelevant communications 
+
+```{r Unsubscribe Score,message=FALSE,warning=FALSE}
+
+# Check the distribution of unsubscribe rate
+summary(train$Unsub_Rate)
+
+# Default Value
+train$Unsub_Score <- -1
+
+# Unsubcribe Score
+train$Unsub_Score <- ifelse(train$Unsub_Rate>0.0010 & train$Unsub_Rate<=0.0030,-2, train$Unsub_Score)
+train$Unsub_Score <- ifelse(train$Unsub_Rate>0.0030 & train$Unsub_Rate<=0.0050,-3, train$Unsub_Score)
+train$Unsub_Score <- ifelse(train$Unsub_Rate>0.0050,-4, train$Unsub_Score)
+
+```
+
+##Email Score
+
+The Email Score will be calculated by incorporating the scores calculated above
+
+* The first step will be to assign weights to each of the given components depending on the email type
+* The second step will involve combining these individual scores into one final score
+* Calculate a final normalize score that will be used to priortize the campaigns on a given day
+
+```{r Email Score,message=FALSE,warning=FALSE}
+
+# Setting Default Value
+train$Email_Score <- 0
+
+# Email Score
+# ES for Inform = 5 x Open Score + Unsubscribe Score				
+# ES for Trade = 	2 x Open Score + 3 x Click Score + Unsubscribe Score				
+
+train$Email_Score <- ifelse(train$Email_Type=="Inform",(5*train$Open_Score + train$Unsub_Score),
+                            (2*train$Open_Score + 3*train$Click_Score + train$Unsub_Score)) 
+
+# Normalization is required as we need to normalize the difference between the emails with different length and depth of content in the same category
+
+train$Norm_Email_Score <- (train$Email_Score)/(max(train$Email_Score)-min(train$Email_Score))
+
+summary(train$Norm_Email_Score)
+
+```
+
+# Model Application
+
+**Campaign Priortization**
+
+Let's say on a given day, we have 4 campaigns - A, B, C and  D with Email Scores as 0.2, 0.4, 0.7 and 0.9 respectively. TO make sure that a customer receive only a single email in a day, we can rank these campaigns as per their ES like the followuing:
+
+1. D
+2. C
+3. B
+4. A
+
+Now, say there is a customer "Pankaj" who is a part of the targeting for campaigns D, C and B. By this scoring, we will only send him campaign D and suppress him from receving B and C. This way, the customer receives our best campaign.
+
+**Campaign Optimization**
+
+This scoring can also be used to stop the campaigns which are not performing well. 
+For Example: A trade campaign in Grocery was launched and after 6 deployments its final average score is 0.4. Looking at the results below, we can clearly say that this campaign is not performing well (as its score is below 50 percentile) and therefore can be stopped. 
+Thus, it can help in optimizing a firm's marketing strategy.
+
+```{r Model Application,message=FALSE,warning=FALSE}
+aggregate(Norm_Email_Score ~ Business + Email_Type, data = train, FUN = summary)
+
+```
+
+**Customer Segmentation**
+
+A similar score can be calculated at a customer level based on the number of emails he/she has opened/clicked and thus the customers with high score can be targeted frequently as compared to the other customers. We can also also include the revenue metric while calculating the final score.
+
+Lets understand by importing a sample customer file with 1306 unique customers. This file has:
+* Customer Number: Customer Identifier
+* Email_Address: Email of the customer
+* Business: from which business he received an email
+* Received: Total number of Emails Received
+* Opened: Number of emails opened
+* Clicked: Number of emails clicked
+* Open Rate: Opened/Received
+* Click Rate: Clicked/Received
+
+Here, we are not taking the unsubscribe, because once a customer unsubscribes, he will never receive an email again so by default the value will be either 1 or 0
+
+```{r Future Scope,message=FALSE,warning=FALSE}
+
+customer <- read.csv('Customer_Report.csv',stringsAsFactors = F,header = T)
+str(customer)
+head(customer)
+
+
+# Check the median open rate for business
+aggregate(Open_Rate ~ Business, data = train, FUN = median)
+aggregate(Open.Rate ~ Business, data = customer, FUN = median)
+
+```
+We can see that for Clothing, Grocery and Homeware, the median open rate is 40.64%, 37.12% and 42.65% respectively. Now, let's count the number of customers whose engagement is less than the threshold.
+
+```{r Future Scope2,message=FALSE,warning=FALSE}
+
+(nrow(subset(customer, Open.Rate > 0.4064 & Business == 'Clothing'))/nrow(subset(customer, Business == 'Clothing')))
+(nrow(subset(customer, Open.Rate > 0.3712 & Business == 'Grocery'))/nrow(subset(customer, Business == 'Grocery')))
+(nrow(subset(customer, Open.Rate > 0.4265 & Business == 'Homeware'))/nrow(subset(customer, Business == 'Homeware')))
+
+```
+
+* We can clearly see that only 18.6% of the customers who receive Clothing emails are actually engaged with the content
+* 54% of the customers who received Grocery emails are actually interested in them
+* 31.5% of the customers are interested in receiving Homeware emails
+
+Hence, we can stop sendng the emails to **Zombies** (basically the non-engaged customers)
+
+
+
+
+
+
+

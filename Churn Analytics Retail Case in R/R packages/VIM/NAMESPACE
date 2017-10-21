@@ -1,0 +1,53 @@
+import(grDevices, sp, stats, tcltk, utils)
+importFrom(car, box.cox, box.cox.powers)
+importFrom(colorspace, hex, RGB, polarLUV)
+importFrom(robustbase, covMcd)
+importFrom(nnet, multinom)
+importFrom(vcd, labeling_border, mosaic)
+useDynLib(VIM)
+export(
+    alphablend,
+    aggr,
+    barMiss,
+    bgmap,
+    bubbleMiss,
+    colSequence,
+    colSequenceHCL,
+    colSequenceRGB,
+    colormapMiss,
+    colormapMissLegend,
+    countInf,
+    countNA,
+    growdotMiss,
+    histMiss,
+    iimagMiss,
+    initialise,
+    irmi,
+    mapMiss,
+    marginmatrix, 
+    marginplot,
+    matrixplot,
+    mosaicMiss,
+    pairsVIM,
+    parcoordMiss,
+    pbox,
+    prepare, 
+    rugNA,
+    scattJitt,
+    scattmatrixMiss,
+    scattMiss,
+    spineMiss,
+    TKRaggr,
+    TKRmarginmatrix,
+    TKRmatrixplot,
+    TKRparcoordMiss,
+    TKRpbox,
+    TKRscattmatrixMiss,
+    vmGUImenu,
+    gowerD,hotdeck,kNN,sampleCat,maxCat,which.minN,vmGUIenvir
+)
+
+S3method(plot, aggr)
+S3method(print, aggr)
+S3method(print, summary.aggr)
+S3method(summary, aggr)
