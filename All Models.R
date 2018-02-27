@@ -4,9 +4,7 @@ setwd("C:/Users/DR-STRANG/Desktop/Aditya/R/KNN")
 dataurl <- "https://archive.ics.uci.edu/ml/machine-learning-databases/wine/wine.data"
 download.file(url = dataurl, destfile = "wine.data")
 wine_df <- read.csv("wine.data", header = FALSE)
-1
-2
-3
+
 dataurl <- "https://archive.ics.uci.edu/ml/machine-learning-databases/wine/wine.data"
 download.file(url = dataurl, destfile = "wine.data")
 wine_df <- read.csv("wine.data", header = FALSE)
